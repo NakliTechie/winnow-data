@@ -1,0 +1,17 @@
+# OS junk
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Data — lives in R2, never committed
+data/
+*.parquet
+*.duckdb
+
+# secrets
+.env
+.dev.vars
