@@ -24,6 +24,27 @@ Per nightly run (`scrape.py`), a single post-US-close pass covering both session
 
 Idempotent — re-running fetches only missing days.
 
+## Schedule (two market-scoped runs, each after its close)
+
+| Market | Cron (UTC) | Local time | Why |
+|---|---|---|---|
+| **India** (`scrape-india.yml`) | `0 16 * * 1-5` | 9:30 PM IST, Mon–Fri | after NSE close (15:30 IST) + bhavcopy publish (~7 PM IST); data ready **by 10 PM IST** |
+| **US** (`scrape-us.yml`) | `0 0 * * 2-6` | 5:30 AM IST, Tue–Sat | after US close (~20:00–21:00 UTC prior evening); data ready **by 6 AM IST** |
+
+Each also has a **manual "Run workflow"** button (workflow_dispatch).
+
+## Diagnosis / logs
+
+Every run writes its outcome to the store (local + R2) so failures are diagnosable without
+digging through CI logs:
+- `status/scrape_IN.json` · `status/scrape_US.json` — **latest run** per market:
+  `{market, date, started_utc, finished_utc, ok, in_new, us_new, error, duration_s}`.
+- `logs/scrape_<market>_<timestamp>.json` — immutable per-run history.
+
+A failed run also **exits non-zero**, so the GitHub Actions run goes red and GitHub emails
+the repo owner. Quick health check: read `status/scrape_*.json` — if `ok:false` see `error`;
+if `started_utc` is stale, the schedule isn't firing.
+
 ## Store layout (R2)
 
 ```

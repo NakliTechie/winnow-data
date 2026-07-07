@@ -12,9 +12,13 @@ Idempotent; a single post-US-close run covers both prior sessions.
 """
 from __future__ import annotations
 
+import argparse
 import datetime as dt
 import glob
 import os
+import sys
+import time
+import traceback
 
 import pandas as pd
 
@@ -107,19 +111,57 @@ def update_us(today):
     return max(new, 0)
 
 
-def main():
+def _log_status(market: str, rec: dict):
+    """Write per-run status + an immutable per-run log to the store (local + R2) so runs are
+    diagnosable without digging through CI logs. status/scrape_<M>.json = latest; logs/… = history."""
+    ts = rec["started_utc"].replace(":", "").replace("-", "").replace("T", "_")[:15]
+    storage.write_json(f"status/scrape_{market}.json", rec)
+    storage.write_json(f"logs/scrape_{market}_{ts}.json", rec)
+
+
+def run(market: str) -> dict:
+    """Run the scrape for one market ('IN'|'US') or 'both'. Returns a status record; writes
+    it to status/ + logs/; exits non-zero on failure so CI (and its failure email) catches it."""
     today = dt.date.today()
-    hr(f"SCRAPE — {today} (UTC {dt.datetime.utcnow():%H:%M})")
-    storage.pull_store()
-    in_new = update_india(today)
-    us_new = update_us(today)
-    if in_new:
-        rebuild_india_adj()
-    changed = ([os.path.join(DATA, x) for x in
-                ("ohlcv_adj.parquet", "us_ohlcv_raw.parquet", "us_ohlcv_adj.parquet", "us_symbol_master.parquet")]
-               + glob.glob(os.path.join(BC, "IN_cash_*.parquet")))
-    storage.push(changed)
-    hr(f"DONE — IN +{in_new} day(s), US +{us_new} day(s)")
+    started = dt.datetime.utcnow()
+    t0 = time.time()
+    hr(f"SCRAPE [{market}] — {today} (UTC {started:%H:%M})")
+    rec = {"market": market, "date": str(today), "started_utc": started.isoformat() + "Z",
+           "ok": False, "in_new": 0, "us_new": 0, "error": None}
+    try:
+        storage.pull_store()
+        if market in ("IN", "both"):
+            rec["in_new"] = update_india(today)
+            if rec["in_new"]:
+                rebuild_india_adj()
+        if market in ("US", "both"):
+            rec["us_new"] = update_us(today)
+        changed = ([os.path.join(DATA, x) for x in
+                    ("ohlcv_adj.parquet", "us_ohlcv_raw.parquet", "us_ohlcv_adj.parquet", "us_symbol_master.parquet")]
+                   + glob.glob(os.path.join(BC, "IN_cash_*.parquet")))
+        storage.push(changed)
+        rec["ok"] = True
+    except Exception as e:
+        rec["error"] = f"{type(e).__name__}: {e}"
+        traceback.print_exc()
+    rec["finished_utc"] = dt.datetime.utcnow().isoformat() + "Z"
+    rec["duration_s"] = round(time.time() - t0, 1)
+    try:
+        _log_status(market, rec)
+    except Exception as e:
+        print(f"[warn] could not write status log: {e}", flush=True)
+    hr(f"{'DONE' if rec['ok'] else 'FAILED'} [{market}] — IN +{rec['in_new']} US +{rec['us_new']}"
+       + (f" — {rec['error']}" if rec["error"] else ""))
+    if not rec["ok"]:
+        sys.exit(1)
+    return rec
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--market", choices=["IN", "US", "both"], default="both",
+                    help="which market to scrape (crons target one each)")
+    run(ap.parse_args().market)
 
 
 if __name__ == "__main__":

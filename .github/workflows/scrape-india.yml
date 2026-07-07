@@ -1,0 +1,30 @@
+name: scrape-india
+
+# India: data available by 10 PM IST. NSE closes 15:30 IST; bhavcopy published ~7 PM IST.
+# 16:00 UTC = 21:30 IST — after publish, completes well before the 22:00 IST (10 PM) target.
+on:
+  schedule:
+    - cron: "0 16 * * 1-5"      # Mon–Fri 16:00 UTC (9:30 PM IST)
+  workflow_dispatch: {}
+
+concurrency:
+  group: scrape-india
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Scrape India + adjust → R2
+        env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: python scrape.py --market IN

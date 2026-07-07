@@ -1,30 +1,31 @@
-name: scrape
+name: scrape-us
 
-# A single post-US-close run covers both prior sessions (IN + US).
-# 22:30 UTC weekdays — after US close (20:00 EDT / 21:00 EST UTC), long after IN close.
+# US: data available by 6 AM IST. US closes 16:00 ET (20:00 EDT / 21:00 EST UTC).
+# 00:00 UTC = 5:30 AM IST next day — after close, completes before the 06:00 IST target.
+# Runs Tue–Sat UTC to capture Mon–Fri US sessions.
 on:
   schedule:
-    - cron: "30 22 * * 1-5"
+    - cron: "0 0 * * 2-6"       # Tue–Sat 00:00 UTC (5:30 AM IST)
   workflow_dispatch: {}
 
 concurrency:
-  group: scrape
+  group: scrape-us
   cancel-in-progress: false
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
-      - name: Scrape + adjust + publish to R2
+      - name: Scrape US + adjust → R2
         env:
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: python scrape.py
+        run: python scrape.py --market US

@@ -64,3 +64,17 @@ def push(paths: Iterable[str]) -> None:
             c.upload_file(p, bucket, _rel(p))
             n += 1
     print(f"[storage] pushed {n} objects to R2 bucket {bucket}")
+
+
+def write_json(key: str, obj) -> None:
+    """Write a small JSON object to `key` (relative to the store root) — local always, and
+    R2 when configured. Used for run status/logs."""
+    import json
+    body = json.dumps(obj, indent=2)
+    lp = os.path.join(DATA, key)
+    os.makedirs(os.path.dirname(lp), exist_ok=True)
+    with open(lp, "w") as f:
+        f.write(body)
+    if r2_enabled():
+        _client().put_object(Bucket=os.environ["R2_BUCKET"], Key=key,
+                             Body=body.encode(), ContentType="application/json")
