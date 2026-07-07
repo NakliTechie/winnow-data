@@ -1,10 +1,11 @@
 name: scrape-india
 
 # India: data available by 10 PM IST. NSE closes 15:30 IST; bhavcopy published ~7 PM IST.
-# 16:00 UTC = 21:30 IST — after publish, completes well before the 22:00 IST (10 PM) target.
+# 15:37 UTC = 9:07 PM IST — off-hour (Actions cron lags most at :00), ~50 min margin before
+# the 22:00 IST (10 PM) target even with GitHub's scheduling delay.
 on:
   schedule:
-    - cron: "0 16 * * 1-5"      # Mon–Fri 16:00 UTC (9:30 PM IST)
+    - cron: "37 15 * * 1-5"     # Mon–Fri 15:37 UTC (9:07 PM IST)
   workflow_dispatch: {}
 
 concurrency:

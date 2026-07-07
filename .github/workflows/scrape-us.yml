@@ -1,11 +1,12 @@
 name: scrape-us
 
 # US: data available by 6 AM IST. US closes 16:00 ET (20:00 EDT / 21:00 EST UTC).
-# 00:00 UTC = 5:30 AM IST next day — after close, completes before the 06:00 IST target.
-# Runs Tue–Sat UTC to capture Mon–Fri US sessions.
+# 23:47 UTC = 5:17 AM IST — off-hour (avoids the :00 cron rush), ~2.5h after US close so
+# data is ready, and ~40 min margin before the 06:00 IST target even with Actions lag.
+# Mon–Fri 23:47 UTC captures Mon–Fri US sessions.
 on:
   schedule:
-    - cron: "0 0 * * 2-6"       # Tue–Sat 00:00 UTC (5:30 AM IST)
+    - cron: "47 23 * * 1-5"     # Mon–Fri 23:47 UTC (5:17 AM IST)
   workflow_dispatch: {}
 
 concurrency:

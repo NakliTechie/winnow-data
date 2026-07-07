@@ -28,10 +28,11 @@ Idempotent — re-running fetches only missing days.
 
 | Market | Cron (UTC) | Local time | Why |
 |---|---|---|---|
-| **India** (`scrape-india.yml`) | `0 16 * * 1-5` | 9:30 PM IST, Mon–Fri | after NSE close (15:30 IST) + bhavcopy publish (~7 PM IST); data ready **by 10 PM IST** |
-| **US** (`scrape-us.yml`) | `0 0 * * 2-6` | 5:30 AM IST, Tue–Sat | after US close (~20:00–21:00 UTC prior evening); data ready **by 6 AM IST** |
+| **India** (`scrape-india.yml`) | `37 15 * * 1-5` | 9:07 PM IST, Mon–Fri | after NSE close (15:30 IST) + bhavcopy publish (~7 PM IST); data ready **by 10 PM IST** |
+| **US** (`scrape-us.yml`) | `47 23 * * 1-5` | 5:17 AM IST, Mon–Fri | ~2.5h after US close; data ready **by 6 AM IST** |
 
-Each also has a **manual "Run workflow"** button (workflow_dispatch).
+Times are **off-hour on purpose** — GitHub Actions cron lags most at `:00`, so we schedule at
+odd minutes with margin before the deadlines. Each also has a **manual "Run workflow"** button.
 
 ## Diagnosis / logs
 
